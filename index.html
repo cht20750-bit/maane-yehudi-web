@@ -477,8 +477,10 @@
   <footer>מענה יהודי — נוצר בסייעתא דשמיא</footer>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@google/generative-ai@0.21.0/dist/index.global.min.js"></script>
 <script>
+/* ==================== Load Gemini SDK ==================== */
+var _genaiLoad = import("https://cdn.jsdelivr.net/npm/@google/generative-ai@0.21.0/dist/index.mjs").then(function(m) { window.GoogleGenerativeAI = m.GoogleGenerativeAI; }).catch(function(e) { console.error("Gemini SDK failed to load", e); });
+
 /* ==================== Config ==================== */
 var PASSWORD = "207503426";
 var GEMINI_MODELS = ["gemini-2.5-flash","gemini-2.5-flash-lite","gemini-2.0-flash","gemini-3-flash-preview","gemini-3.1-flash-lite","gemini-3.1-pro-preview","gemini-2.5-pro","gemini-3.5-flash","gemini-3.5-flash-lite","gemma-4-31b"];
@@ -701,6 +703,8 @@ async function sendChat() {
 
   try {
     if (currentProvider === "gemini") {
+      await _genaiLoad;
+      if (!window.GoogleGenerativeAI) { hideTyping(); addMessage("assistant", "טעינת SDK של Gemini נכשלה. נסה שוב או עבור לספק Groq."); chatLoading = false; updateSendBtn(); return; }
       var modelName = currentModel;
       var genAI = new GoogleGenerativeAI(key);
       var gm = genAI.getGenerativeModel({
