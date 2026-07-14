@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>מענה יהודי</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f4ff; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    .container { width: 100%; max-width: 700px; padding: 20px; }
+    h1 { text-align: center; color: #1565c0; margin-bottom: 20px; font-size: 1.8em; }
+    #login-screen { background: #fff; border-radius: 16px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); text-align: center; }
+    #login-screen input { width: 200px; padding: 12px 18px; font-size: 18px; border: 2px solid #ddd; border-radius: 8px; text-align: center; margin: 15px 0; }
+    #login-screen button { padding: 12px 30px; font-size: 16px; background: #1565c0; color: #fff; border: none; border-radius: 8px; cursor: pointer; }
+    #login-screen button:hover { background: #0d47a1; }
+    #login-error { color: #d32f2f; margin-top: 10px; display: none; }
+    #chat-screen { display: none; }
+    .chat-box { background: #fff; border-radius: 16px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); min-height: 400px; max-height: 70vh; overflow-y: auto; margin-bottom: 15px; }
+    .message { margin-bottom: 16px; padding: 12px 16px; border-radius: 12px; line-height: 1.7; white-space: pre-wrap; word-wrap: break-word; }
+    .user-msg { background: #e3f2fd; border-right: 4px solid #1565c0; }
+    .bot-msg { background: #f5f5f5; border-right: 4px solid #4caf50; }
+    .bot-msg strong { color: #1a1a50; }
+    .input-row { display: flex; gap: 10px; }
+    #question-input { flex: 1; padding: 14px; font-size: 15px; border: 2px solid #ddd; border-radius: 10px; resize: none; min-height: 50px; max-height: 150px; }
+    #question-input:focus { border-color: #1565c0; outline: none; }
+    #send-btn { padding: 14px 24px; font-size: 16px; background: #1565c0; color: #fff; border: none; border-radius: 10px; cursor: pointer; white-space: nowrap; }
+    #send-btn:hover { background: #0d47a1; }
+    #send-btn:disabled { background: #999; cursor: not-allowed; }
+    .loading { text-align: center; color: #666; padding: 20px; }
+    .model-tag { font-size: 11px; color: #888; margin-top: 6px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="login-screen">
+      <h1>מענה יהודי</h1>
+      <p>הכנס סיסמה:</p>
+      <input type="password" id="password-input" autofocus><br>
+      <button onclick="login()">כניסה</button>
+      <div id="login-error">סיסמה שגויה</div>
+    </div>
+    <div id="chat-screen">
+      <h1>מענה יהודי</h1>
+      <div class="chat-box" id="chat-box">
+        <div class="message bot-msg">ברוך הבא. כתוב שאלה וה-Gemini יענה.</div>
+      </div>
+      <div class="input-row">
+        <textarea id="question-input" placeholder="כתוב שאלה..." rows="1"></textarea>
+        <button id="send-btn" onclick="ask()">שלח</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    var PASSWORD = "207503426";
+    var MODELS = ["gemini-2.5-flash","gemini-3.5-flash","gemini-3-flash-preview","gemini-2.5-flash-lite","gemini-3.5-flash-lite","gemini-3.1-pro-preview","gemini-2.5-pro","gemini-3.1-flash-lite","gemini-2.0-flash","gemma-4-31b"];
+    var API_KEYS = ["AIzaSy...הכנס-מפתח-ראשון","AIzaSy...הכנס-מפתח-שני","AIzaSy...הכנס-מפתח-שלישי","AIzaSy...הכנס-מפתח-רביעי","AIzaSy...הכנס-מפתח-חמישי","AIzaSy...הכנס-מפתח-שישי"];
+    var GROQ_API_KEY = "gsk_...הכנס-מפתח-Groq";
+    var SYSTEM_PROMPT = 'אתה "מענה יהודי" — מערכת בינה מלאכותית לשירות תלמידי ישיבות, אברכי כוללים וראשי ישיבות. תחומי עיסוקך: כתיבה תורנית, מציאת מקורות, עזרה בקוד, מענה לשאלות כלליות. כללים: כתוב בעברית בשפת עולם הישיבות, מדויק ומעמיק. תאריך עכשיו: ' + new Date().toLocaleDateString("he-IL",{timeZone:"Asia/Jerusalem"}) + " שעה: " + new Date().toLocaleTimeString("he-IL",{timeZone:"Asia/Jerusalem"});
+    var GROQ_MODELS = ["openai/gpt-oss-120b","llama-3.3-70b-versatile"];
+
+    function login() {
+      if (document.getElementById("password-input").value !== PASSWORD) { document.getElementById("login-error").style.display = "block"; return; }
+      document.getElementById("login-screen").style.display = "none";
+      document.getElementById("chat-screen").style.display = "block";
+      document.getElementById("question-input").focus();
+    }
+    document.getElementById("password-input").addEventListener("keydown",function(e){if(e.key==="Enter")login();});
+    document.getElementById("question-input").addEventListener("keydown",function(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();ask();}});
+
+    async function ask() {
+      var input = document.getElementById("question-input"), q = input.value.trim();
+      if (!q) return;
+      var box = document.getElementById("chat-box"), btn = document.getElementById("send-btn");
+      box.innerHTML += '<div class="message user-msg">'+escHtml(q)+'</div><div class="loading" id="loading">⏳ מחכה לתשובה...</div>';
+      box.scrollTop = box.scrollHeight; input.value = ""; btn.disabled = true;
+      var answer = null, usedModel = "";
+      try {
+        for (var mi = 0; mi < MODELS.length && !answer; mi++) {
+          for (var ki = 0; ki < API_KEYS.length && !answer; ki++) {
+            answer = await callGemini(q, MODELS[mi], API_KEYS[ki]);
+            if (answer) usedModel = MODELS[mi];
+          }
+        }
+        if (!answer) {
+          for (var gi = 0; gi < GROQ_MODELS.length && !answer; gi++) {
+            answer = await callGroq(q, GROQ_MODELS[gi]);
+            if (answer) usedModel = "groq/"+GROQ_MODELS[gi];
+          }
+        }
+        document.getElementById("loading").remove();
+        if (answer) box.innerHTML += '<div class="message bot-msg">'+formatAnswer(answer)+'<div class="model-tag">'+usedModel+'</div></div>';
+        else box.innerHTML += '<div class="message bot-msg" style="color:#d32f2f;">❌ כל המודלים נכשלו</div>';
+      } catch(e) { document.getElementById("loading")?.remove(); box.innerHTML += '<div class="message bot-msg" style="color:#d32f2f;">❌ '+escHtml(e.message||"שגיאה")+'</div>'; }
+      box.scrollTop = box.scrollHeight; btn.disabled = false; input.focus();
+    }
+
+    async function callGemini(q, model, key) {
+      var r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+model+":generateContent?key="+key, {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({system_instruction:{parts:[{text:SYSTEM_PROMPT}]},contents:[{role:"user",parts:[{text:q}]}],generationConfig:{temperature:1,maxOutputTokens:65536}})
+      });
+      if (!r.ok) return null;
+      var d = await r.json(), c = d.candidates && d.candidates[0];
+      if (!c) return null;
+      var t = ""; (c.content.parts||[]).forEach(function(p){if(p.text&&!p.thought)t+=p.text;});
+      return t.trim() || null;
+    }
+
+    async function callGroq(q, model) {
+      var r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method:"POST", headers:{"Content-Type":"application/json","Authorization":"Bearer "+GROQ_API_KEY},
+        body:JSON.stringify({model:model,messages:[{role:"system",content:SYSTEM_PROMPT},{role:"user",content:q}],temperature:0.7,max_tokens:8192})
+      });
+      if (!r.ok) return null;
+      var d = await r.json(), t = d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
+      return t || null;
+    }
+
+    function escHtml(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+    function formatAnswer(t){
+      t=escHtml(t);
+      t=t.replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>");
+      t=t.replace(/^### (.+)$/gm,"<h4 style='color:#1565c0;margin:10px 0 4px;'>$1</h4>");
+      t=t.replace(/^## (.+)$/gm,"<h3 style='color:#1565c0;margin:12px 0 6px;'>$1</h3>");
+      t=t.replace(/^# (.+)$/gm,"<h2 style='color:#1565c0;margin:14px 0 8px;'>$1</h2>");
+      t=t.replace(/\`\`\`([\s\S]*?)\`\`\`/g,"<pre style='background:#f5f5f5;padding:10px;border-radius:6px;direction:ltr;text-align:left;overflow-x:auto;'>$1</pre>");
+      t=t.replace(/\`([^`]+)\`/g,"<code style='background:#f0f0f0;padding:2px 4px;border-radius:3px;'>$1</code>");
+      return t;
+    }
+  </script>
+</body>
+</html>
