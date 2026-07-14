@@ -1,132 +1,962 @@
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>מענה יהודי</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f4ff; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-    .container { width: 100%; max-width: 700px; padding: 20px; }
-    h1 { text-align: center; color: #1565c0; margin-bottom: 20px; font-size: 1.8em; }
-    #login-screen { background: #fff; border-radius: 16px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); text-align: center; }
-    #login-screen input { width: 200px; padding: 12px 18px; font-size: 18px; border: 2px solid #ddd; border-radius: 8px; text-align: center; margin: 15px 0; }
-    #login-screen button { padding: 12px 30px; font-size: 16px; background: #1565c0; color: #fff; border: none; border-radius: 8px; cursor: pointer; }
-    #login-screen button:hover { background: #0d47a1; }
-    #login-error { color: #d32f2f; margin-top: 10px; display: none; }
-    #chat-screen { display: none; }
-    .chat-box { background: #fff; border-radius: 16px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); min-height: 400px; max-height: 70vh; overflow-y: auto; margin-bottom: 15px; }
-    .message { margin-bottom: 16px; padding: 12px 16px; border-radius: 12px; line-height: 1.7; white-space: pre-wrap; word-wrap: break-word; }
-    .user-msg { background: #e3f2fd; border-right: 4px solid #1565c0; }
-    .bot-msg { background: #f5f5f5; border-right: 4px solid #4caf50; }
-    .bot-msg strong { color: #1a1a50; }
-    .input-row { display: flex; gap: 10px; }
-    #question-input { flex: 1; padding: 14px; font-size: 15px; border: 2px solid #ddd; border-radius: 10px; resize: none; min-height: 50px; max-height: 150px; }
-    #question-input:focus { border-color: #1565c0; outline: none; }
-    #send-btn { padding: 14px 24px; font-size: 16px; background: #1565c0; color: #fff; border: none; border-radius: 10px; cursor: pointer; white-space: nowrap; }
-    #send-btn:hover { background: #0d47a1; }
-    #send-btn:disabled { background: #999; cursor: not-allowed; }
-    .loading { text-align: center; color: #666; padding: 20px; }
-    .model-tag { font-size: 11px; color: #888; margin-top: 6px; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>מענה יהודי</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #f0f4ff;
+    --surface: rgba(255,255,255,0.85);
+    --surface-2: rgba(255,255,255,0.95);
+    --border: #dde3ed;
+    --text: #1e293b;
+    --text-dim: #64748b;
+    --text-faint: #94a3b8;
+    --primary: #2563eb;
+    --primary-light: #dbeafe;
+    --accent-grad: linear-gradient(135deg, #2563eb, #7c3aed);
+    --radius: 16px;
+    --shadow: 0 2px 12px rgba(0,0,0,0.06);
+    --shadow-lg: 0 4px 24px rgba(0,0,0,0.1);
+  }
+
+  body {
+    font-family: 'Segoe UI', 'Heebo', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .container { max-width: 960px; margin: 0 auto; padding: 24px 16px; min-height: 100vh; display: flex; flex-direction: column; }
+
+  header { text-align: center; margin-bottom: 24px; }
+  .header-inner { display: inline-flex; align-items: center; gap: 12px; }
+  .logo { width: 48px; height: 48px; border-radius: 16px; background: var(--accent-grad); display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(37,99,235,0.2); flex-shrink: 0; }
+  .logo svg { width: 28px; height: 28px; color: #fff; }
+  .header-titles h1 { font-size: 24px; font-weight: 700; color: var(--primary); }
+  .header-titles p { font-size: 13px; color: var(--text-dim); margin-top: 2px; }
+
+  .tabs { display: flex; gap: 6px; padding: 6px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); margin-bottom: 24px; box-shadow: var(--shadow); }
+  .tab-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 16px; border-radius: 12px; border: none; background: transparent; color: var(--text-dim); font-size: 14px; font-weight: 500; cursor: pointer; transition: all .2s; font-family: inherit; }
+  .tab-btn:hover { background: var(--primary-light); color: var(--primary); }
+  .tab-btn.active { background: var(--accent-grad); color: #fff; box-shadow: 0 4px 16px rgba(37,99,235,0.25); }
+  .tab-btn svg { width: 16px; height: 16px; }
+
+  .card { border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); padding: 16px; box-shadow: var(--shadow); backdrop-filter: blur(8px); }
+  .card-title { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text-dim); margin-bottom: 12px; }
+  .card-title svg { width: 16px; height: 16px; }
+
+  .settings-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+  @media (min-width: 640px) { .settings-grid { grid-template-columns: 1fr 1fr; } }
+
+  label.field-label { display: block; font-size: 12px; font-weight: 600; color: var(--text-dim); margin-bottom: 4px; }
+
+  select, .input-text, input.key-input {
+    width: 100%; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--surface-2); color: var(--text);
+    padding: 8px 12px; font-size: 14px; font-family: inherit;
+    outline: none; transition: border .2s;
+  }
+  select:focus, .input-text:focus, input.key-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.15); }
+  select option { background: #fff; }
+
+  .provider-row { display: flex; gap: 8px; }
+  .provider-btn { flex: 1; border-radius: 10px; padding: 8px 12px; font-size: 14px; font-weight: 500; border: 1px solid var(--border); cursor: pointer; transition: all .2s; font-family: inherit; background: var(--surface-2); color: var(--text-dim); }
+  .provider-btn:hover { border-color: var(--primary); color: var(--primary); }
+  .provider-btn.active { background: var(--accent-grad); color: #fff; border-color: transparent; box-shadow: 0 4px 12px rgba(37,99,235,0.25); }
+
+  .toggle-row { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 16px; }
+  .toggle { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text); cursor: pointer; user-select: none; }
+  .toggle-switch { position: relative; width: 36px; height: 20px; border-radius: 999px; background: #cbd5e1; transition: background .2s; flex-shrink: 0; }
+  .toggle-switch::after { content: ''; position: absolute; top: 2px; right: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: right .2s; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+  .toggle.on .toggle-switch { background: var(--primary); }
+  .toggle.on .toggle-switch::after { right: 18px; }
+
+  .chat-area { max-height: 50vh; min-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+  .msg { display: flex; gap: 12px; }
+  .msg.user { flex-direction: row-reverse; }
+  .msg-avatar { width: 32px; height: 32px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .msg-avatar.assistant { background: var(--accent-grad); }
+  .msg-avatar.user { background: #e2e8f0; }
+  .msg-avatar svg { width: 16px; height: 16px; }
+  .msg-avatar.assistant svg { color: #fff; }
+  .msg-avatar.user svg { color: #64748b; }
+  .msg-body { display: flex; flex-direction: column; gap: 4px; max-width: 80%; }
+  .msg.user .msg-body { align-items: flex-end; }
+  .msg-bubble { border-radius: 16px; padding: 10px 16px; font-size: 14px; line-height: 1.6; white-space: pre-wrap; }
+  .msg.user .msg-bubble { background: var(--primary-light); color: var(--text); }
+  .msg.assistant .msg-bubble { background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.06); border: 1px solid var(--border); }
+  .msg-meta { display: flex; align-items: center; gap: 8px; padding: 0 4px; }
+  .msg-time { font-size: 10px; color: var(--text-faint); }
+  .msg-action { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text-faint); cursor: pointer; background: none; border: none; font-family: inherit; opacity: 0; transition: all .2s; padding: 2px 6px; border-radius: 4px; }
+  .msg-action svg { width: 12px; height: 12px; }
+  .msg:hover .msg-action { opacity: 1; }
+  .msg-action:hover { color: var(--primary); background: var(--primary-light); }
+
+  .chat-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; color: var(--text-faint); padding: 40px 0; }
+  .chat-empty svg { width: 48px; height: 48px; opacity: 0.3; }
+  .chat-empty p { font-size: 14px; color: var(--text-dim); }
+  .chat-empty span { font-size: 12px; }
+
+  .typing { display: flex; gap: 12px; }
+  .typing-bubble { display: flex; align-items: center; gap: 8px; border-radius: 16px; padding: 12px 16px; background: #fff; border: 1px solid var(--border); box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  .typing-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); animation: blink 1.4s infinite both; }
+  .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes blink { 0%,80%,100% { opacity: 0.3; } 40% { opacity: 1; } }
+
+  .input-area { border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); padding: 12px; margin-top: 16px; box-shadow: var(--shadow); }
+  .attached-file { display: flex; align-items: center; gap: 8px; border-radius: 10px; background: var(--primary-light); padding: 8px 12px; font-size: 12px; color: var(--text); margin-bottom: 8px; }
+  .attached-file .filename { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .attached-file .filesize { color: var(--text-dim); }
+  .attached-file .remove-file { cursor: pointer; color: var(--text-dim); background: none; border: none; display: flex; }
+  .attached-file .remove-file:hover { color: #ef4444; }
+
+  .input-row { display: flex; align-items: flex-end; gap: 8px; }
+  .icon-btn { width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all .2s; flex-shrink: 0; background: var(--surface-2); color: var(--text-dim); }
+  .icon-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+  .icon-btn svg { width: 16px; height: 16px; }
+
+  textarea.chat-input { flex: 1; resize: none; border-radius: 12px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); padding: 10px 16px; font-size: 14px; font-family: inherit; outline: none; min-height: 40px; max-height: 120px; transition: border .2s; }
+  textarea.chat-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.15); }
+  textarea.chat-input::placeholder { color: var(--text-faint); }
+
+  .send-btn { width: 40px; height: 40px; border-radius: 12px; border: none; background: var(--accent-grad); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 16px rgba(37,99,235,0.25); transition: transform .15s; flex-shrink: 0; }
+  .send-btn:hover:not(:disabled) { transform: scale(1.05); }
+  .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .send-btn svg { width: 16px; height: 16px; }
+  .spinner { animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .action-btn { display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 12px; border: none; background: var(--accent-grad); color: #fff; padding: 12px 24px; font-size: 14px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 16px rgba(37,99,235,0.25); transition: transform .15s; font-family: inherit; }
+  .action-btn:hover:not(:disabled) { transform: scale(1.02); }
+  .action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .action-btn svg { width: 16px; height: 16px; }
+
+  .upload-zone { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; border: 2px dashed var(--border); border-radius: 12px; padding: 32px; text-align: center; cursor: pointer; transition: all .2s; }
+  .upload-zone:hover { border-color: var(--primary); background: var(--primary-light); }
+  .upload-icon { width: 56px; height: 56px; border-radius: 16px; background: var(--primary-light); display: flex; align-items: center; justify-content: center; }
+  .upload-icon svg { width: 28px; height: 28px; color: var(--primary); }
+  .upload-zone p { font-size: 14px; font-weight: 500; color: var(--text); }
+  .upload-zone span { font-size: 12px; color: var(--text-dim); }
+
+  .file-info { display: flex; align-items: center; gap: 12px; border-radius: 10px; background: var(--primary-light); padding: 12px 16px; margin-top: 12px; }
+  .file-info svg { width: 20px; height: 20px; color: var(--primary); flex-shrink: 0; }
+  .file-info .file-name { font-size: 14px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .file-info .file-size { font-size: 12px; color: var(--text-dim); }
+  .file-info .remove-btn { cursor: pointer; color: var(--text-dim); background: none; border: none; display: flex; }
+  .file-info .remove-btn:hover { color: #ef4444; }
+
+  .result-box { border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); padding: 16px; margin-top: 16px; box-shadow: var(--shadow); }
+  .result-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .result-header span { font-size: 14px; font-weight: 500; color: var(--text); }
+  .result-actions { display: flex; gap: 8px; }
+  .result-action { display: flex; align-items: center; gap: 6px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); padding: 6px 12px; font-size: 12px; color: var(--text); cursor: pointer; font-family: inherit; transition: all .2s; }
+  .result-action:hover { border-color: var(--primary); color: var(--primary); }
+  .result-action svg { width: 14px; height: 14px; }
+  .result-content { max-height: 240px; overflow-y: auto; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--border); padding: 16px; font-size: 14px; line-height: 1.6; color: var(--text); white-space: pre-wrap; }
+
+  .slider-row { margin-top: 16px; }
+  .slider-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .slider-header label { font-size: 12px; color: var(--text-dim); }
+  .slider-header span { font-size: 12px; font-weight: 600; color: var(--primary); }
+  input[type="range"] { width: 100%; accent-color: var(--primary); }
+  .slider-marks { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-faint); margin-top: 2px; }
+
+  textarea.notes { width: 100%; resize: none; border-radius: 10px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); padding: 8px 12px; font-size: 14px; font-family: inherit; outline: none; transition: border .2s; }
+  textarea.notes:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.15); }
+  textarea.notes::placeholder { color: var(--text-faint); }
+
+  .char-count { text-align: left; font-size: 12px; color: var(--text-faint); margin-top: 4px; }
+
+  audio { width: 100%; margin-top: 8px; }
+
+  footer { text-align: center; font-size: 12px; color: var(--text-faint); margin-top: 32px; padding: 16px 0; border-top: 1px solid var(--border); }
+
+  .tab-content { flex: 1; display: flex; flex-direction: column; gap: 16px; }
+  .hidden { display: none !important; }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+  /* Login overlay */
+  #login-overlay {
+    position: fixed; inset: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bg);
+  }
+  #login-overlay.hidden { display: none; }
+  .login-box {
+    background: #fff; border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 40px; text-align: center; max-width: 360px; width: 100%;
+    box-shadow: var(--shadow-lg);
+  }
+  .login-box h2 { font-size: 20px; margin-bottom: 4px; color: var(--primary); }
+  .login-box p { font-size: 13px; color: var(--text-dim); margin-bottom: 20px; }
+  .login-box input {
+    width: 100%; border-radius: 10px; border: 1px solid var(--border);
+    background: #f8fafc; color: var(--text); padding: 10px 14px;
+    font-size: 16px; font-family: inherit; outline: none; text-align: center;
+    transition: border .2s; margin-bottom: 16px;
+  }
+  .login-box input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.15); }
+  .login-box .error { color: #ef4444; font-size: 13px; display: none; margin-bottom: 12px; }
+  .login-box .login-submit {
+    width: 100%; border-radius: 10px; border: none; background: var(--accent-grad);
+    color: #fff; padding: 10px; font-size: 15px; font-weight: 600;
+    cursor: pointer; font-family: inherit; transition: transform .15s;
+  }
+  .login-box .login-submit:hover { transform: scale(1.02); }
+
+  .model-tag { font-size: 10px; color: var(--text-faint); direction: ltr; text-align: left; margin-top: 4px; }
+
+  /* API Key input */
+  .key-row { display: flex; gap: 8px; align-items: center; }
+  .key-row input { flex: 1; }
+  .key-status { font-size: 12px; }
+  .key-status.ok { color: #16a34a; }
+  .key-status.err { color: #ef4444; }
+</style>
 </head>
 <body>
-  <div class="container">
-    <div id="login-screen">
-      <h1>מענה יהודי</h1>
-      <p>הכנס סיסמה:</p>
-      <input type="password" id="password-input" autofocus><br>
-      <button onclick="login()">כניסה</button>
-      <div id="login-error">סיסמה שגויה</div>
+<div class="container">
+  <header>
+    <div class="header-inner">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/></svg>
+      </div>
+      <div class="header-titles">
+        <h1>מענה יהודי</h1>
+        <p>מרכז AI תורני — שאל כל שאלה</p>
+      </div>
     </div>
-    <div id="chat-screen">
-      <h1>מענה יהודי</h1>
-      <div class="chat-box" id="chat-box">
-        <div class="message bot-msg">ברוך הבא. כתוב שאלה וה-Gemini יענה.</div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="chat" onclick="switchTab('chat')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <span>צ'אט</span>
+    </button>
+    <button class="tab-btn" data-tab="transcribe" onclick="switchTab('transcribe')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+      <span>תמלול</span>
+    </button>
+    <button class="tab-btn" data-tab="tts" onclick="switchTab('tts')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4.7a1 1 0 0 1 1.4-.8L18 7a1 1 0 0 1 .6.9V20a1 1 0 0 1-1.4.9L11 18a1 1 0 0 1-.6-.9V4.7Z"/><path d="M8 8a3 3 0 0 1 0 8"/><path d="M2 10a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1Z"/></svg>
+      <span>הקראה</span>
+    </button>
+  </nav>
+
+  <!-- Chat Tab -->
+  <div id="tab-chat" class="tab-content">
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+        <span>מפתח API</span>
+      </div>
+      <div class="key-row">
+        <input class="key-input" id="api-key-input" type="password" placeholder="הכנס מפתח Gemini API" oninput="onKeyChange()">
+        <button class="result-action" id="key-toggle-btn" onclick="toggleKeyVisibility()" style="white-space:nowrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+          <span>הראה</span>
+        </button>
+      </div>
+      <div class="key-status" id="key-status">לא הוזן מפתח</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg>
+        <span>הגדרות מודל</span>
+      </div>
+      <div class="settings-grid">
+        <div>
+          <label class="field-label">ספק AI</label>
+          <div class="provider-row">
+            <button class="provider-btn active" id="prov-gemini" onclick="selectProvider('gemini')">Gemini</button>
+            <button class="provider-btn" id="prov-groq" onclick="selectProvider('groq')">Groq</button>
+          </div>
+        </div>
+        <div>
+          <label class="field-label">מודל</label>
+          <select id="model-select"></select>
+        </div>
+      </div>
+    </div>
+
+    <div class="card chat-area" id="chat-area">
+      <div class="chat-empty" id="chat-empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M11 8h.01"/><path d="M11 12h.01"/><path d="M11 16h.01"/><path d="M15 8h.01"/><path d="M15 12h.01"/><path d="M15 16h.01"/></svg>
+        <p>שאלו אותי כל שאלה — אני כאן בשבילכם.</p>
+        <span>הכנס מפתח API, בחר ספק ומודל, והתחל לכתוב.</span>
+      </div>
+    </div>
+
+    <div class="input-area">
+      <div id="attached-file-chat" class="attached-file hidden">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:var(--primary);flex-shrink:0"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+        <span class="filename"></span>
+        <span class="filesize"></span>
+        <button class="remove-file" onclick="removeChatFile()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
       </div>
       <div class="input-row">
-        <textarea id="question-input" placeholder="כתוב שאלה..." rows="1"></textarea>
-        <button id="send-btn" onclick="ask()">שלח</button>
+        <label class="icon-btn" title="צרף קובץ">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+          <input type="file" style="display:none" onchange="onChatFileSelect(this)" />
+        </label>
+        <textarea class="chat-input" id="chat-input" placeholder="כתבו את השאלה שלכם כאן..." rows="1" onkeydown="onChatKey(event)" oninput="autoGrow(this)"></textarea>
+        <button class="send-btn" id="send-btn" onclick="sendChat()">
+          <svg id="send-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+        </button>
       </div>
     </div>
   </div>
-  <script>
-    var PASSWORD = "207503426";
-    var MODELS = ["gemini-2.5-flash","gemini-3.5-flash","gemini-3-flash-preview","gemini-2.5-flash-lite","gemini-3.5-flash-lite","gemini-3.1-pro-preview","gemini-2.5-pro","gemini-3.1-flash-lite","gemini-2.0-flash","gemma-4-31b"];
-    var API_KEYS = ["AIzaSyBHdhYZkR9w1KYSaqs0grxG994RUmOHXN0","AIzaSyCZntqFMMP8D_vfGqqjGgVp_lv-HND3ZmE","AIzaSyCkKtDnOVVPS5dfcM9vvEVm2hZ5DE2tfDg","AIzaSyAvM_qpVoeZWvyqeCt737Tt3q0tTCycVC0","AIzaSyBIeANe9LVZW34b5mhdWuqmo45O5N6SxTw","AIzaSyAK6FD8byqzG4wfyyiqcbspmvDA65q4NDs"];
-    var GROQ_API_KEY = "gsk_PLACEHOLDER_REPLACE_ME";
-    var SYSTEM_PROMPT = 'אתה "מענה יהודי" — מערכת בינה מלאכותית לשירות תלמידי ישיבות, אברכי כוללים וראשי ישיבות. תחומי עיסוקך: כתיבה תורנית, מציאת מקורות, עזרה בקוד, מענה לשאלות כלליות. כללים: כתוב בעברית בשפת עולם הישיבות, מדויק ומעמיק. תאריך עכשיו: ' + new Date().toLocaleDateString("he-IL",{timeZone:"Asia/Jerusalem"}) + " שעה: " + new Date().toLocaleTimeString("he-IL",{timeZone:"Asia/Jerusalem"});
-    var GROQ_MODELS = ["openai/gpt-oss-120b","llama-3.3-70b-versatile"];
 
-    function login() {
-      if (document.getElementById("password-input").value !== PASSWORD) { document.getElementById("login-error").style.display = "block"; return; }
-      document.getElementById("login-screen").style.display = "none";
-      document.getElementById("chat-screen").style.display = "block";
-      document.getElementById("question-input").focus();
-    }
-    document.getElementById("password-input").addEventListener("keydown",function(e){if(e.key==="Enter")login();});
-    document.getElementById("question-input").addEventListener("keydown",function(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();ask();}});
+  <!-- Transcribe Tab -->
+  <div id="tab-transcribe" class="tab-content hidden">
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+        <span>מפתח API</span>
+      </div>
+      <div class="key-row">
+        <input class="key-input" id="tr-api-key" type="password" placeholder="הכנס מפתח Gemini API" oninput="onTrKeyChange()">
+        <button class="result-action" onclick="document.getElementById('tr-api-key').type=document.getElementById('tr-api-key').type==='password'?'text':'password';this.querySelector('span').textContent=document.getElementById('tr-api-key').type==='password'?'הראה':'הסתר'" style="white-space:nowrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+          <span>הראה</span>
+        </button>
+      </div>
+    </div>
 
-    async function ask() {
-      var input = document.getElementById("question-input"), q = input.value.trim();
-      if (!q) return;
-      var box = document.getElementById("chat-box"), btn = document.getElementById("send-btn");
-      box.innerHTML += '<div class="message user-msg">'+escHtml(q)+'</div><div class="loading" id="loading">⏳ מחכה לתשובה...</div>';
-      box.scrollTop = box.scrollHeight; input.value = ""; btn.disabled = true;
-      var answer = null, usedModel = "";
-      try {
-        for (var mi = 0; mi < MODELS.length && !answer; mi++) {
-          for (var ki = 0; ki < API_KEYS.length && !answer; ki++) {
-            answer = await callGemini(q, MODELS[mi], API_KEYS[ki]);
-            if (answer) usedModel = MODELS[mi];
-          }
-        }
-        if (!answer) {
-          for (var gi = 0; gi < GROQ_MODELS.length && !answer; gi++) {
-            answer = await callGroq(q, GROQ_MODELS[gi]);
-            if (answer) usedModel = "groq/"+GROQ_MODELS[gi];
-          }
-        }
-        document.getElementById("loading").remove();
-        if (answer) box.innerHTML += '<div class="message bot-msg">'+formatAnswer(answer)+'<div class="model-tag">'+usedModel+'</div></div>';
-        else box.innerHTML += '<div class="message bot-msg" style="color:#d32f2f;">❌ כל המודלים נכשלו</div>';
-      } catch(e) { document.getElementById("loading")?.remove(); box.innerHTML += '<div class="message bot-msg" style="color:#d32f2f;">❌ '+escHtml(e.message||"שגיאה")+'</div>'; }
-      box.scrollTop = box.scrollHeight; btn.disabled = false; input.focus();
-    }
+    <div class="card">
+      <label class="upload-zone" id="transcribe-upload">
+        <div class="upload-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v6.5"/><circle cx="14" cy="6" r="2"/><path d="M10 8.5v9a2 2 0 0 1-2 2H6"/><path d="M14 10v8a4 4 0 0 1-4 4"/><path d="M6 7H4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2"/></svg>
+        </div>
+        <p>לחצו להעלות קובץ אודיו/וידאו</p>
+        <span>MP3, WAV, M4A, MP4 — עד 25MB</span>
+        <input type="file" accept="audio/*,video/*" style="display:none" onchange="onTranscribeFileSelect(this)" />
+      </label>
+      <div id="transcribe-file-info" class="file-info hidden">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v6.5"/><circle cx="14" cy="6" r="2"/><path d="M10 8.5v9a2 2 0 0 1-2 2H6"/><path d="M14 10v8a4 4 0 0 1-4 4"/><path d="M6 7H4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2"/></svg>
+        <div style="flex:1;min-width:0">
+          <div class="file-name"></div>
+          <div class="file-size"></div>
+        </div>
+        <button class="remove-btn" onclick="removeTranscribeFile()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+      </div>
+    </div>
 
-    async function callGemini(q, model, key) {
-      var r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+model+":generateContent?key="+key, {
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({system_instruction:{parts:[{text:SYSTEM_PROMPT}]},contents:[{role:"user",parts:[{text:q}]}],generationConfig:{temperature:1,maxOutputTokens:65536}})
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg>
+        <span>הגדרות תמלול</span>
+      </div>
+      <div class="settings-grid">
+        <div>
+          <label class="field-label">שפה</label>
+          <select id="tr-language" onchange="onLangChange()">
+            <option value="he">עברית</option>
+            <option value="en">אנגלית</option>
+            <option value="ar">ערבית</option>
+            <option value="ru">רוסית</option>
+            <option value="fr">צרפתית</option>
+          </select>
+        </div>
+        <div>
+          <label class="field-label">פורמט פלט</label>
+          <select id="tr-format">
+            <option value="txt">טקסט (TXT)</option>
+            <option value="srt">כתוביות (SRT)</option>
+            <option value="vtt">WebVTT</option>
+            <option value="json">JSON</option>
+          </select>
+        </div>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle" id="tr-autodetect" onclick="toggle(this, 'autodetect')">
+          <span class="toggle-switch"></span>
+          <span>זיהוי שפה אוטומטי</span>
+        </div>
+        <div class="toggle on" id="tr-punctuate" onclick="toggle(this, 'punctuate')">
+          <span class="toggle-switch"></span>
+          <span>פיסוק אוטומטי</span>
+        </div>
+        <div class="toggle" id="tr-diarize" onclick="toggle(this, 'diarize')">
+          <span class="toggle-switch"></span>
+          <span>הפרדת דוברים</span>
+        </div>
+      </div>
+    </div>
+
+    <button class="action-btn" id="tr-btn" onclick="startTranscribe()" disabled>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+      <span>התחל תמלול</span>
+    </button>
+
+    <div id="tr-result" class="result-box hidden">
+      <div class="result-header">
+        <span>תוצאת תמלול</span>
+        <div class="result-actions">
+          <button class="result-action" onclick="copyResult('tr-result-content')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+            <span>העתק</span>
+          </button>
+          <button class="result-action" onclick="downloadResult()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+            <span>הורד</span>
+          </button>
+        </div>
+      </div>
+      <div class="result-content" id="tr-result-content"></div>
+    </div>
+  </div>
+
+  <!-- TTS Tab -->
+  <div id="tab-tts" class="tab-content hidden">
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <label class="field-label" style="margin:0">טקסט להקראה</label>
+        <button class="result-action" onclick="copyText('tts-text')" style="font-size:12px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+          <span>העתק טקסט</span>
+        </button>
+      </div>
+      <textarea class="input-text" id="tts-text" rows="5" placeholder="כתבו כאן את הטקסט שתרצו להקריא..." oninput="updateCharCount()"></textarea>
+      <div class="char-count" id="char-count">0 תווים</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg>
+        <span>הגדרות הקראה</span>
+      </div>
+      <div class="settings-grid">
+        <div>
+          <label class="field-label">קול</label>
+          <select id="tts-voice">
+            <option value="he-IL">עברית (ברירת מחדל)</option>
+          </select>
+        </div>
+        <div>
+          <label class="field-label">קצב</label>
+          <select id="tts-rate">
+            <option value="0.7">איטי</option>
+            <option value="1" selected>רגיל</option>
+            <option value="1.3">מהיר</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <button class="action-btn" id="tts-btn" onclick="generateTTS()" disabled>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4.7a1 1 0 0 1 1.4-.8L18 7a1 1 0 0 1 .6.9V20a1 1 0 0 1-1.4.9L11 18a1 1 0 0 1-.6-.9V4.7Z"/><path d="M8 8a3 3 0 0 1 0 8"/><path d="M2 10a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1Z"/></svg>
+      <span>ייצר הקראה</span>
+    </button>
+
+    <div id="tts-result" class="result-box hidden">
+      <div class="result-header">
+        <span style="display:flex;align-items:center;gap:8px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;color:var(--primary)"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+          הקראה
+        </span>
+        <button class="result-action" onclick="stopTTS()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 9h6v6H9z"/></svg>
+          <span>עצור</span>
+        </button>
+      </div>
+      <div id="tts-status" style="font-size:13px;color:var(--text-dim);margin-top:8px"></div>
+    </div>
+  </div>
+
+  <footer>מענה יהודי — נוצר בסייעתא דשמיא</footer>
+</div>
+
+<script>
+/* ==================== Config ==================== */
+var PASSWORD = "207503426";
+var GEMINI_MODELS = ["gemini-2.5-flash","gemini-2.5-flash-lite","gemini-2.0-flash","gemini-3-flash-preview","gemini-3.1-flash-lite","gemini-3.1-pro-preview","gemini-2.5-pro","gemini-3.5-flash","gemini-3.5-flash-lite","gemma-4-31b"];
+var GROQ_MODELS_LIST = [
+  { id: "llama-3.3-70b-versatile", label: "Llama 3.3 70B" },
+  { id: "llama-3.1-8b-instant", label: "Llama 3.1 8B" },
+  { id: "mixtral-8x7b-32768", label: "Mixtral 8x7B" },
+];
+
+function getSystemPrompt() {
+  var now = new Date();
+  var dateStr = now.toLocaleDateString("he-IL", { timeZone: "Asia/Jerusalem" });
+  var timeStr = now.toLocaleTimeString("he-IL", { timeZone: "Asia/Jerusalem" });
+  return 'אתה "מענה יהודי" — מערכת בינה מלאכותית לשירות תלמידי ישיבות, אברכי כוללים וראשי ישיבות. תחומי עיסוקך: כתיבה תורנית, מציאת מקורות, עזרה בקוד, מענה לשאלות כלליות. כללים: כתוב בעברית בשפת עולם הישיבות, מדויק ומעמיק. תאריך עכשיו: ' + dateStr + " שעה: " + timeStr;
+}
+
+var MODELS_MAP = {
+  gemini: GEMINI_MODELS.map(function(m) { return { id: m, label: m }; }),
+  groq: GROQ_MODELS_LIST,
+};
+
+var currentProvider = "gemini";
+var currentModel = GEMINI_MODELS[0];
+var chatMessages = [];
+var chatLoading = false;
+var chatFile = null;
+var transcribeFile = null;
+var toggleState = { autodetect: false, punctuate: true, diarize: false };
+
+/* ==================== Login ==================== */
+var loggedIn = localStorage.getItem("maane_logged_in");
+if (loggedIn === "true") {
+  document.querySelector("#login-overlay")?.remove();
+} else {
+  var ov = document.createElement("div");
+  ov.id = "login-overlay";
+  ov.innerHTML = '<div class="login-box"><h2>מענה יהודי</h2><p>הכנס סיסמה כדי להמשיך</p><input type="password" id="login-pass" placeholder="סיסמה" onkeydown="if(event.key===\'Enter\')doLogin()"><div class="error" id="login-error">סיסמה שגויה</div><button class="login-submit" onclick="doLogin()">היכנס</button></div>';
+  document.body.prepend(ov);
+  document.getElementById("login-pass").focus();
+}
+
+function doLogin() {
+  if (document.getElementById("login-pass").value === PASSWORD) {
+    localStorage.setItem("maane_logged_in", "true");
+    document.getElementById("login-overlay").classList.add("hidden");
+  } else {
+    document.getElementById("login-error").style.display = "block";
+  }
+}
+
+/* ==================== API Key ==================== */
+var savedKey = localStorage.getItem("maane_api_key");
+if (savedKey) {
+  document.getElementById("api-key-input").value = savedKey;
+  updateKeyStatus(savedKey);
+}
+
+function onKeyChange() {
+  var key = document.getElementById("api-key-input").value.trim();
+  if (key) {
+    localStorage.setItem("maane_api_key", key);
+    updateKeyStatus(key);
+  } else {
+    localStorage.removeItem("maane_api_key");
+    document.getElementById("key-status").textContent = "לא הוזן מפתח";
+    document.getElementById("key-status").className = "key-status";
+  }
+}
+
+function updateKeyStatus(key) {
+  var el = document.getElementById("key-status");
+  if (key.startsWith("AIzaSy") && key.length > 30) {
+    el.textContent = "מפתח תקין";
+    el.className = "key-status ok";
+  } else {
+    el.textContent = "מפתח לא תקין (צריך להתחיל ב-AIzaSy)";
+    el.className = "key-status err";
+  }
+}
+
+function toggleKeyVisibility() {
+  var input = document.getElementById("api-key-input");
+  var btn = document.getElementById("key-toggle-btn");
+  if (input.type === "password") {
+    input.type = "text";
+    btn.querySelector("span").textContent = "הסתר";
+  } else {
+    input.type = "password";
+    btn.querySelector("span").textContent = "הראה";
+  }
+}
+
+function getApiKey() {
+  return document.getElementById("api-key-input").value.trim();
+}
+
+/* ==================== Tabs ==================== */
+function switchTab(tab) {
+  document.querySelectorAll(".tab-btn").forEach(function(b) { b.classList.toggle("active", b.dataset.tab === tab); });
+  document.querySelectorAll(".tab-content").forEach(function(c) { c.classList.add("hidden"); });
+  document.getElementById("tab-" + tab).classList.remove("hidden");
+}
+
+/* ==================== Chat ==================== */
+function selectProvider(p) {
+  currentProvider = p;
+  document.getElementById("prov-gemini").classList.toggle("active", p === "gemini");
+  document.getElementById("prov-groq").classList.toggle("active", p === "groq");
+  var sel = document.getElementById("model-select");
+  sel.innerHTML = MODELS_MAP[p].map(function(m) { return '<option value="' + m.id + '">' + m.label + "</option>"; }).join("");
+  currentModel = MODELS_MAP[p][0].id;
+}
+
+document.getElementById("model-select").addEventListener("change", function(e) { currentModel = e.target.value; });
+
+function autoGrow(el) {
+  el.style.height = "40px";
+  el.style.height = Math.min(el.scrollHeight, 120) + "px";
+}
+
+function onChatKey(e) {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat(); }
+}
+
+function onChatFileSelect(input) {
+  if (input.files[0]) {
+    chatFile = input.files[0];
+    var box = document.getElementById("attached-file-chat");
+    box.querySelector(".filename").textContent = chatFile.name;
+    box.querySelector(".filesize").textContent = (chatFile.size / 1024).toFixed(1) + " KB";
+    box.classList.remove("hidden");
+  }
+}
+
+function removeChatFile() {
+  chatFile = null;
+  document.getElementById("attached-file-chat").classList.add("hidden");
+}
+
+function uid() { return Math.random().toString(36).slice(2, 11); }
+function formatTime() { return new Date().toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" }); }
+
+function addMessage(role, content, modelTag) {
+  var area = document.getElementById("chat-area");
+  var msgDiv = document.createElement("div");
+  msgDiv.className = "msg " + role;
+  msgDiv.id = "msg-" + uid();
+
+  var avatarSvg = role === "assistant"
+    ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M11 8h.01"/><path d="M11 12h.01"/><path d="M11 16h.01"/><path d="M15 8h.01"/><path d="M15 12h.01"/><path d="M15 16h.01"/></svg>'
+    : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+
+  var actions = "";
+  if (role === "assistant") {
+    actions = '<button class="msg-action" onclick="copyMsg(\'' + msgDiv.id + '\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg><span>העתק</span></button>';
+  }
+
+  var modelInfo = modelTag ? '<div class="model-tag">' + modelTag + "</div>" : "";
+
+  msgDiv.innerHTML = '<div class="msg-avatar ' + role + '">' + avatarSvg + '</div><div class="msg-body"><div class="msg-bubble"></div>' + modelInfo + '<div class="msg-meta"><span class="msg-time">' + formatTime() + "</span>" + actions + "</div></div>";
+  msgDiv.querySelector(".msg-bubble").textContent = content;
+  area.appendChild(msgDiv);
+  area.scrollTop = area.scrollHeight;
+}
+
+function showTyping() {
+  var area = document.getElementById("chat-area");
+  var t = document.createElement("div");
+  t.className = "typing";
+  t.id = "typing-indicator";
+  t.innerHTML = '<div class="msg-avatar assistant"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M11 8h.01"/><path d="M11 12h.01"/><path d="M11 16h.01"/><path d="M15 8h.01"/><path d="M15 12h.01"/><path d="M15 16h.01"/></svg></div><div class="typing-bubble"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>';
+  area.appendChild(t);
+  area.scrollTop = area.scrollHeight;
+}
+
+function hideTyping() {
+  var t = document.getElementById("typing-indicator");
+  if (t) t.remove();
+}
+
+function copyMsg(id) {
+  var el = document.getElementById(id);
+  if (el) {
+    navigator.clipboard.writeText(el.querySelector(".msg-bubble").textContent);
+    var btn = el.querySelector(".msg-action span");
+    if (btn) { btn.textContent = "הועתק"; setTimeout(function() { btn.textContent = "העתק"; }, 2000); }
+  }
+}
+
+function updateSendBtn() {
+  document.getElementById("send-btn").disabled = chatLoading;
+}
+
+async function sendChat() {
+  var input = document.getElementById("chat-input");
+  var text = input.value.trim();
+  if (!text || chatLoading) return;
+
+  var key = getApiKey();
+  if (!key) {
+    addMessage("assistant", "יש להזין מפתח API תחילה.");
+    return;
+  }
+
+  addMessage("user", text);
+  input.value = "";
+  autoGrow(input);
+  removeChatFile();
+  chatLoading = true;
+  updateSendBtn();
+
+  var empty = document.getElementById("chat-empty");
+  if (empty) empty.remove();
+
+  showTyping();
+
+  var systemPrompt = getSystemPrompt();
+  var answer = null;
+  var usedModel = "";
+
+  try {
+    if (currentProvider === "gemini") {
+      var model = currentModel;
+      var r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + key, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ role: "user", parts: [{ text: text }] }],
+          generationConfig: { temperature: 1, maxOutputTokens: 65536 }
+        })
       });
-      if (!r.ok) return null;
-      var d = await r.json(), c = d.candidates && d.candidates[0];
-      if (!c) return null;
-      var t = ""; (c.content.parts||[]).forEach(function(p){if(p.text&&!p.thought)t+=p.text;});
-      return t.trim() || null;
-    }
-
-    async function callGroq(q, model) {
+      if (!r.ok) {
+        var errData = await r.json().catch(function(){ return {}; });
+        hideTyping();
+        addMessage("assistant", "שגיאה מ-Gemini: " + (errData.error?.message || r.statusText || r.status));
+        chatLoading = false;
+        updateSendBtn();
+        return;
+      }
+      var d = await r.json();
+      var c = d.candidates && d.candidates[0];
+      if (!c) {
+        hideTyping();
+        addMessage("assistant", "המודל לא החזיר תוצאה. נסה שוב.");
+        chatLoading = false;
+        updateSendBtn();
+        return;
+      }
+      var t = "";
+      (c.content.parts || []).forEach(function(p) { if (p.text && !p.thought) t += p.text; });
+      answer = t.trim();
+      usedModel = model;
+    } else {
+      var groqKey = document.getElementById("tr-api-key").value.trim() || key;
+      var modelId = currentModel;
       var r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method:"POST", headers:{"Content-Type":"application/json","Authorization":"Bearer "+GROQ_API_KEY},
-        body:JSON.stringify({model:model,messages:[{role:"system",content:SYSTEM_PROMPT},{role:"user",content:q}],temperature:0.7,max_tokens:8192})
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + groqKey },
+        body: JSON.stringify({
+          model: modelId,
+          messages: [{ role: "system", content: systemPrompt }, { role: "user", content: text }],
+          temperature: 0.7,
+          max_tokens: 8192
+        })
       });
-      if (!r.ok) return null;
-      var d = await r.json(), t = d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
-      return t || null;
+      if (!r.ok) {
+        var errData = await r.json().catch(function(){ return {}; });
+        hideTyping();
+        addMessage("assistant", "שגיאה מ-Groq: " + (errData.error?.message || r.statusText || r.status));
+        chatLoading = false;
+        updateSendBtn();
+        return;
+      }
+      var d = await r.json();
+      answer = d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
+      usedModel = "groq/" + modelId;
+    }
+  } catch (e) {
+    hideTyping();
+    addMessage("assistant", "שגיאת תקשורת: " + (e.message || "התחברות נכשלה"));
+    chatLoading = false;
+    updateSendBtn();
+    return;
+  }
+
+  hideTyping();
+  if (answer) {
+    addMessage("assistant", answer, usedModel);
+  } else {
+    addMessage("assistant", "לא הצלחתי לקבל תשובה. נסו שוב מאוחר יותר או החליפו ספק/מודל.");
+  }
+
+  chatLoading = false;
+  updateSendBtn();
+  document.getElementById("chat-input").focus();
+}
+
+/* ==================== Transcribe ==================== */
+function onTrKeyChange() {
+  var key = document.getElementById("tr-api-key").value.trim();
+  document.getElementById("tr-btn").disabled = !(transcribeFile && key);
+}
+
+function onTranscribeFileSelect(input) {
+  if (input.files[0]) {
+    transcribeFile = input.files[0];
+    var info = document.getElementById("transcribe-file-info");
+    info.querySelector(".file-name").textContent = transcribeFile.name;
+    info.querySelector(".file-size").textContent = (transcribeFile.size / 1024 / 1024).toFixed(2) + " MB";
+    info.classList.remove("hidden");
+    var key = document.getElementById("tr-api-key").value.trim();
+    document.getElementById("tr-btn").disabled = !key;
+  }
+}
+
+function removeTranscribeFile() {
+  transcribeFile = null;
+  document.getElementById("transcribe-file-info").classList.add("hidden");
+  document.getElementById("tr-btn").disabled = true;
+  document.getElementById("tr-result").classList.add("hidden");
+}
+
+function toggle(el, key) {
+  toggleState[key] = !toggleState[key];
+  el.classList.toggle("on", toggleState[key]);
+  if (key === "autodetect") {
+    document.getElementById("tr-language").disabled = toggleState[key];
+  }
+}
+
+function onLangChange() {}
+
+async function startTranscribe() {
+  if (!transcribeFile) return;
+  var key = document.getElementById("tr-api-key").value.trim();
+  if (!key) return;
+
+  var btn = document.getElementById("tr-btn");
+  btn.disabled = true;
+  btn.innerHTML = '<svg class="spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg><span>מתמלל...</span>';
+
+  try {
+    var base64 = await fileToBase64(transcribeFile);
+    var mimeType = transcribeFile.type || "audio/mpeg";
+    var lang = toggleState.autodetect ? "" : document.getElementById("tr-language").value;
+    var prompt = "תמלל את האודיו הזה לעברית. ";
+    if (toggleState.punctuate) prompt += "הוסף פיסוק. ";
+    if (toggleState.diarize) prompt += "הפרד בין דוברים. ";
+    if (lang) prompt += "השפה היא " + lang + ". ";
+
+    var r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + key, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: prompt }] },
+        contents: [{
+          role: "user",
+          parts: [
+            { inline_data: { mime_type: mimeType, data: base64 } },
+            { text: "תמלל את הקובץ הזה במדויק." }
+          ]
+        }],
+        generationConfig: { temperature: 0.3, maxOutputTokens: 8192 }
+      })
+    });
+
+    if (!r.ok) {
+      var errData = await r.json().catch(function(){ return {}; });
+      document.getElementById("tr-result-content").textContent = "שגיאה: " + (errData.error?.message || r.statusText);
+      document.getElementById("tr-result").classList.remove("hidden");
+      btn.disabled = false;
+      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg><span>התחל תמלול</span>';
+      return;
     }
 
-    function escHtml(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
-    function formatAnswer(t){
-      t=escHtml(t);
-      t=t.replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>");
-      t=t.replace(/^### (.+)$/gm,"<h4 style='color:#1565c0;margin:10px 0 4px;'>$1</h4>");
-      t=t.replace(/^## (.+)$/gm,"<h3 style='color:#1565c0;margin:12px 0 6px;'>$1</h3>");
-      t=t.replace(/^# (.+)$/gm,"<h2 style='color:#1565c0;margin:14px 0 8px;'>$1</h2>");
-      t=t.replace(/\`\`\`([\s\S]*?)\`\`\`/g,"<pre style='background:#f5f5f5;padding:10px;border-radius:6px;direction:ltr;text-align:left;overflow-x:auto;'>$1</pre>");
-      t=t.replace(/\`([^`]+)\`/g,"<code style='background:#f0f0f0;padding:2px 4px;border-radius:3px;'>$1</code>");
-      return t;
+    var d = await r.json();
+    var c = d.candidates && d.candidates[0];
+    var t = "";
+    if (c) {
+      (c.content.parts || []).forEach(function(p) { if (p.text) t += p.text; });
     }
-  </script>
+    document.getElementById("tr-result-content").textContent = t.trim() || "לא התקבל טקסט.";
+    document.getElementById("tr-result").classList.remove("hidden");
+  } catch(e) {
+    document.getElementById("tr-result-content").textContent = "שגיאה: " + (e.message || "unknown");
+    document.getElementById("tr-result").classList.remove("hidden");
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg><span>התחל תמלול</span>';
+}
+
+function copyResult(contentId) {
+  navigator.clipboard.writeText(document.getElementById(contentId).textContent);
+}
+
+function downloadResult() {
+  var text = document.getElementById("tr-result-content").textContent;
+  var name = transcribeFile ? transcribeFile.name.split(".")[0] : "output";
+  downloadBlob(text, "תמלול_" + name + ".txt", "text/plain;charset=utf-8");
+}
+
+/* ==================== TTS ==================== */
+function updateCharCount() {
+  var text = document.getElementById("tts-text").value;
+  document.getElementById("char-count").textContent = text.length + " תווים";
+  document.getElementById("tts-btn").disabled = !text.trim();
+}
+
+function copyText(id) {
+  navigator.clipboard.writeText(document.getElementById(id).value);
+}
+
+function generateTTS() {
+  var text = document.getElementById("tts-text").value.trim();
+  if (!text) return;
+  var btn = document.getElementById("tts-btn");
+  btn.disabled = true;
+  btn.innerHTML = '<svg class="spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg><span>מקריא...</span>';
+
+  if (!window.speechSynthesis) {
+    document.getElementById("tts-status").textContent = "דפדפן זה לא תומך בהקראה קולית.";
+    document.getElementById("tts-result").classList.remove("hidden");
+    btn.disabled = false;
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4.7a1 1 0 0 1 1.4-.8L18 7a1 1 0 0 1 .6.9V20a1 1 0 0 1-1.4.9L11 18a1 1 0 0 1-.6-.9V4.7Z"/><path d="M8 8a3 3 0 0 1 0 8"/><path d="M2 10a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1Z"/></svg><span>ייצר הקראה</span>';
+    return;
+  }
+
+  window.speechSynthesis.cancel();
+  var utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = "he-IL";
+  utterance.rate = parseFloat(document.getElementById("tts-rate").value);
+  utterance.onend = function() {
+    document.getElementById("tts-status").textContent = "ההקראה הסתיימה.";
+    btn.disabled = false;
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4.7a1 1 0 0 1 1.4-.8L18 7a1 1 0 0 1 .6.9V20a1 1 0 0 1-1.4.9L11 18a1 1 0 0 1-.6-.9V4.7Z"/><path d="M8 8a3 3 0 0 1 0 8"/><path d="M2 10a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1Z"/></svg><span>ייצר הקראה</span>';
+  };
+  utterance.onerror = function() {
+    document.getElementById("tts-status").textContent = "שגיאה בהקראה.";
+    btn.disabled = false;
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4.7a1 1 0 0 1 1.4-.8L18 7a1 1 0 0 1 .6.9V20a1 1 0 0 1-1.4.9L11 18a1 1 0 0 1-.6-.9V4.7Z"/><path d="M8 8a3 3 0 0 1 0 8"/><path d="M2 10a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1Z"/></svg><span>ייצר הקראה</span>';
+  };
+  window.speechSynthesis.speak(utterance);
+  document.getElementById("tts-result").classList.remove("hidden");
+  document.getElementById("tts-status").textContent = "מקריא...";
+}
+
+function stopTTS() {
+  window.speechSynthesis.cancel();
+  document.getElementById("tts-status").textContent = "הופסק.";
+}
+
+/* ==================== Utils ==================== */
+function downloadBlob(content, filename, type) {
+  var blob = new Blob([content], { type: type });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function fileToBase64(file) {
+  return new Promise(function(resolve, reject) {
+    var reader = new FileReader();
+    reader.onload = function() {
+      var result = reader.result;
+      var base64 = result.split(",")[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ==================== Init ==================== */
+selectProvider("gemini");
+</script>
 </body>
 </html>
