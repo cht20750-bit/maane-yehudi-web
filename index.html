@@ -271,6 +271,20 @@
 
     <div class="card">
       <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5"></path><path d="M8 21H3"></path><path d="M21 3L3 21"></path><path d="M21 8V3h-5"></path><path d="M3 16v5h5"></path></svg>
+        <span>שרת Proxy (GAS)</span>
+      </div>
+      <div class="key-row">
+        <input class="key-input" id="gas-url-input" type="text" placeholder="https://script.google.com/macros/s/..." value="" oninput="onGasUrlChange()">
+        <button class="result-action" onclick="document.getElementById('gas-url-input').value='';localStorage.removeItem('maane_gas_url');GAS_PROXY_URL=''" style="white-space:nowrap">
+          <span>נקה</span>
+        </button>
+      </div>
+      <div class="key-status" id="gas-url-status"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg>
         <span>הגדרות מודל</span>
       </div>
@@ -478,9 +492,6 @@
 </div>
 
 <script>
-/* ==================== Load Gemini SDK ==================== */
-var _genaiLoad = import("https://cdn.jsdelivr.net/npm/@google/generative-ai@0.21.0/dist/index.mjs").then(function(m) { window.GoogleGenerativeAI = m.GoogleGenerativeAI; }).catch(function(e) { console.error("Gemini SDK failed to load", e); });
-
 /* ==================== Config ==================== */
 var PASSWORD = "207503426";
 var GEMINI_MODELS = ["gemini-2.5-flash","gemini-2.5-flash-lite","gemini-2.0-flash","gemini-3-flash-preview","gemini-3.1-flash-lite","gemini-3.1-pro-preview","gemini-2.5-pro","gemini-3.5-flash","gemini-3.5-flash-lite","gemma-4-31b"];
@@ -509,6 +520,7 @@ var chatLoading = false;
 var chatFile = null;
 var transcribeFile = null;
 var toggleState = { autodetect: false, punctuate: true, diarize: false };
+var GAS_PROXY_URL = localStorage.getItem("maane_gas_url") || "";
 
 /* ==================== Login ==================== */
 var loggedIn = localStorage.getItem("maane_logged_in");
@@ -531,11 +543,18 @@ function doLogin() {
   }
 }
 
-/* ==================== API Key ==================== */
+/* ==================== API Key & GAS URL ==================== */
 var savedKey = localStorage.getItem("maane_api_key");
 if (savedKey) {
   document.getElementById("api-key-input").value = savedKey;
   updateKeyStatus(savedKey);
+}
+var savedGasUrl = localStorage.getItem("maane_gas_url");
+if (savedGasUrl) {
+  GAS_PROXY_URL = savedGasUrl;
+  document.getElementById("gas-url-input").value = savedGasUrl;
+  document.getElementById("gas-url-status").textContent = "נשמר";
+  document.getElementById("gas-url-status").className = "key-status ok";
 }
 
 function onKeyChange() {
@@ -575,6 +594,21 @@ function toggleKeyVisibility() {
 
 function getApiKey() {
   return document.getElementById("api-key-input").value.trim();
+}
+
+function onGasUrlChange() {
+  var url = document.getElementById("gas-url-input").value.trim();
+  if (url) {
+    GAS_PROXY_URL = url;
+    localStorage.setItem("maane_gas_url", url);
+    document.getElementById("gas-url-status").textContent = "נשמר";
+    document.getElementById("gas-url-status").className = "key-status ok";
+  } else {
+    GAS_PROXY_URL = "";
+    localStorage.removeItem("maane_gas_url");
+    document.getElementById("gas-url-status").textContent = "לא הוגדר";
+    document.getElementById("gas-url-status").className = "key-status";
+  }
 }
 
 /* ==================== Tabs ==================== */
@@ -702,44 +736,41 @@ async function sendChat() {
   var usedModel = "";
 
   try {
-    if (currentProvider === "gemini") {
-      await _genaiLoad;
-      if (!window.GoogleGenerativeAI) { hideTyping(); addMessage("assistant", "טעינת SDK של Gemini נכשלה. נסה שוב או עבור לספק Groq."); chatLoading = false; updateSendBtn(); return; }
-      var modelName = currentModel;
-      var genAI = new GoogleGenerativeAI(key);
-      var gm = genAI.getGenerativeModel({
-        model: modelName,
-        systemInstruction: systemPrompt,
-        generationConfig: { temperature: 1, maxOutputTokens: 65536 }
-      });
-      var result = await gm.generateContent(text);
-      var resp = result.response;
-      answer = resp.text().trim();
-      usedModel = modelName;
-    } else {
-      var modelId = currentModel;
-      var r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + key },
-        body: JSON.stringify({
-          model: modelId,
-          messages: [{ role: "system", content: systemPrompt }, { role: "user", content: text }],
-          temperature: 0.7,
-          max_tokens: 8192
-        })
-      });
-      if (!r.ok) {
-        var errData = await r.json().catch(function(){ return {}; });
-        hideTyping();
-        addMessage("assistant", "שגיאה מ-Groq: " + (errData.error?.message || r.statusText || r.status));
-        chatLoading = false;
-        updateSendBtn();
-        return;
-      }
-      var d = await r.json();
-      answer = d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
-      usedModel = "groq/" + modelId;
+    if (!GAS_PROXY_URL) {
+      hideTyping();
+      addMessage("assistant", "יש להגדיר קישור GAS Proxy בהגדרות.");
+      chatLoading = false;
+      updateSendBtn();
+      return;
     }
+    var messages = [];
+    if (chatFile) {
+      var base64 = await fileToBase64(chatFile);
+      messages.push({ role: "user", content: text, file_data: { mime_type: chatFile.type || "application/octet-stream", data: base64 } });
+    } else {
+      messages.push({ role: "user", content: text });
+    }
+    var r = await fetch(GAS_PROXY_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        provider: currentProvider,
+        apiKey: key,
+        model: currentModel,
+        messages: messages,
+        systemPrompt: systemPrompt
+      })
+    });
+    var d = await r.json();
+    if (!d.success) {
+      hideTyping();
+      addMessage("assistant", "שגיאה: " + (d.error || "התקשורת נכשלה"));
+      chatLoading = false;
+      updateSendBtn();
+      return;
+    }
+    answer = d.text;
+    usedModel = currentProvider + "/" + currentModel;
   } catch (e) {
     hideTyping();
     addMessage("assistant", "שגיאת תקשורת: " + (e.message || "התחברות נכשלה"));
@@ -799,6 +830,11 @@ async function startTranscribe() {
   if (!transcribeFile) return;
   var key = document.getElementById("tr-api-key").value.trim();
   if (!key) return;
+  if (!GAS_PROXY_URL) {
+    document.getElementById("tr-result-content").textContent = "יש להגדיר קישור GAS Proxy בהגדרות.";
+    document.getElementById("tr-result").classList.remove("hidden");
+    return;
+  }
 
   var btn = document.getElementById("tr-btn");
   btn.disabled = true;
@@ -813,38 +849,28 @@ async function startTranscribe() {
     if (toggleState.diarize) prompt += "הפרד בין דוברים. ";
     if (lang) prompt += "השפה היא " + lang + ". ";
 
-    var r = await fetch("https://corsproxy.io/?url=" + encodeURIComponent("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + key), {
+    var r = await fetch(GAS_PROXY_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        system_instruction: { parts: [{ text: prompt }] },
-        contents: [{
-          role: "user",
-          parts: [
-            { inline_data: { mime_type: mimeType, data: base64 } },
-            { text: "תמלל את הקובץ הזה במדויק." }
-          ]
-        }],
-        generationConfig: { temperature: 0.3, maxOutputTokens: 8192 }
+        provider: "gemini",
+        apiKey: key,
+        model: "gemini-2.5-flash",
+        messages: [{ role: "user", content: "תמלל את הקובץ הזה במדויק.", file_data: { mime_type: mimeType, data: base64 } }],
+        systemPrompt: prompt
       })
     });
 
-    if (!r.ok) {
-      var errData = await r.json().catch(function(){ return {}; });
-      document.getElementById("tr-result-content").textContent = "שגיאה: " + (errData.error?.message || r.statusText);
+    var d = await r.json();
+    if (!d.success) {
+      document.getElementById("tr-result-content").textContent = "שגיאה: " + (d.error || "התמלול נכשל");
       document.getElementById("tr-result").classList.remove("hidden");
       btn.disabled = false;
       btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg><span>התחל תמלול</span>';
       return;
     }
-
-    var d = await r.json();
-    var c = d.candidates && d.candidates[0];
-    var t = "";
-    if (c) {
-      (c.content.parts || []).forEach(function(p) { if (p.text) t += p.text; });
-    }
-    document.getElementById("tr-result-content").textContent = t.trim() || "לא התקבל טקסט.";
+    var t = d.text;
+    document.getElementById("tr-result-content").textContent = t || "לא התקבל טקסט.";
     document.getElementById("tr-result").classList.remove("hidden");
   } catch(e) {
     document.getElementById("tr-result-content").textContent = "שגיאה: " + (e.message || "unknown");
