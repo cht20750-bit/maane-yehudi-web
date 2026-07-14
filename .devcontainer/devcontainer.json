@@ -1,0 +1,14 @@
+{
+  "name": "מענה יהודי",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:20",
+  "postCreateCommand": "npm install",
+  "postStartCommand": "npm start",
+  "forwardPorts": [3000],
+  "portsAttributes": {
+    "3000": {
+      "label": "מענה יהודי",
+      "onAutoForward": "openBrowser",
+      "visibility": "public"
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "maane-yehudi-web",
+  "version": "1.0.0",
+  "description": "מענה יהודי — ממשק אינטרנט",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "dotenv": "^16.4.5"
+  }
+}
