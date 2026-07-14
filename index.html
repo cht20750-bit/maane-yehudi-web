@@ -477,6 +477,7 @@
   <footer>מענה יהודי — נוצר בסייעתא דשמיא</footer>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@google/generative-ai@0.21.0/dist/index.global.min.js"></script>
 <script>
 /* ==================== Config ==================== */
 var PASSWORD = "207503426";
@@ -700,47 +701,22 @@ async function sendChat() {
 
   try {
     if (currentProvider === "gemini") {
-      var model = currentModel;
-      var geminiUrl = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent";
-      var r = await fetch("https://corsproxy.io/?url=" + encodeURIComponent(geminiUrl), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": key
-        },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: systemPrompt }] },
-          contents: [{ role: "user", parts: [{ text: text }] }],
-          generationConfig: { temperature: 1, maxOutputTokens: 65536 }
-        })
+      var modelName = currentModel;
+      var genAI = new GoogleGenerativeAI(key);
+      var gm = genAI.getGenerativeModel({
+        model: modelName,
+        systemInstruction: systemPrompt,
+        generationConfig: { temperature: 1, maxOutputTokens: 65536 }
       });
-      if (!r.ok) {
-        var errData = await r.json().catch(function(){ return {}; });
-        hideTyping();
-        addMessage("assistant", "שגיאה מ-Gemini: " + (errData.error?.message || r.statusText || r.status));
-        chatLoading = false;
-        updateSendBtn();
-        return;
-      }
-      var d = await r.json();
-      var c = d.candidates && d.candidates[0];
-      if (!c) {
-        hideTyping();
-        addMessage("assistant", "המודל לא החזיר תוצאה. נסה שוב.");
-        chatLoading = false;
-        updateSendBtn();
-        return;
-      }
-      var t = "";
-      (c.content.parts || []).forEach(function(p) { if (p.text && !p.thought) t += p.text; });
-      answer = t.trim();
-      usedModel = model;
+      var result = await gm.generateContent(text);
+      var resp = result.response;
+      answer = resp.text().trim();
+      usedModel = modelName;
     } else {
-      var groqKey = document.getElementById("tr-api-key").value.trim() || key;
       var modelId = currentModel;
       var r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + groqKey },
+        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + key },
         body: JSON.stringify({
           model: modelId,
           messages: [{ role: "system", content: systemPrompt }, { role: "user", content: text }],
@@ -833,9 +809,9 @@ async function startTranscribe() {
     if (toggleState.diarize) prompt += "הפרד בין דוברים. ";
     if (lang) prompt += "השפה היא " + lang + ". ";
 
-    var r = await fetch("https://corsproxy.io/?url=" + encodeURIComponent("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"), {
+    var r = await fetch("https://corsproxy.io/?url=" + encodeURIComponent("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + key), {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         system_instruction: { parts: [{ text: prompt }] },
         contents: [{
